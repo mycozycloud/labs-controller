@@ -7,14 +7,14 @@ RUN apt-get install -y erlang-dev erlang-manpages erlang-base-hipe erlang-eunit 
 
 RUN apt-get install -y libmozjs185-dev libicu-dev libcurl4-gnutls-dev libtool wget
 
-RUN cd /tmp ; wget http://www.bizdirusa.com/mirrors/apache/couchdb/source/1.3.1/apache-couchdb-1.3.1.tar.gz
+RUN cd /tmp ; wget http://apache.crihan.fr/dist/couchdb/source/1.5.1/apache-couchdb-1.5.1.tar.gz
 
-RUN cd /tmp && tar xvzf apache-couchdb-1.3.1.tar.gz
+RUN cd /tmp && tar xvzf apache-couchdb-1.5.1.tar.gz
 RUN apt-get install -y make
 RUN cd /tmp/apache-couchdb-* ; ./configure && make install
 
-RUN printf "[httpd]\nport = 8101\nbind_address = 0.0.0.0" > /usr/local/etc/couchdb/local.d/docker.ini
+RUN printf "[httpd]\nport = 5984\nbind_address = 0.0.0.0\n" >/usr/local/etc/couchdb/local.d/docker.ini
 
-EXPOSE 8101
+EXPOSE 5984
 
 CMD ["/usr/local/bin/couchdb"]
