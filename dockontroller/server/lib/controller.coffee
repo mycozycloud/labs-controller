@@ -28,7 +28,7 @@ module.exports = class DockerCommander
             options =
                 'name': slug
                 'Image': imagename
-                'Tty': false,
+                'Tty': false
                 # 'Hostname': '',
                 # 'User': '',
                 # 'AttachStdin': false,
@@ -36,7 +36,7 @@ module.exports = class DockerCommander
                 # 'AttachStderr': true,
                 # 'OpenStdin': false,
                 # 'StdinOnce': false,
-                # 'Env': null,
+                'Env': params.env,
                 # 'Cmd': [],
                 # 'Volumes': {},
                 # 'VolumesFrom': ''
@@ -97,3 +97,7 @@ module.exports = class DockerCommander
 
     startApplication: (slug, callback) ->
         @start slug, Links: ['datasystem:datasystem'], callback
+
+
+    exist: (slug) ->
+        return true
