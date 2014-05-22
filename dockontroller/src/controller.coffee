@@ -11,11 +11,16 @@ module.exports = class DockerCommander
     constructor: ->
         @docker = new Docker {@socketPath, @version}
 
+    getContainerVisibleIp: ->
+        addresses = require('os').networkInterfaces()['docker0']
+        return ad.address for ad in addresses when ad.family is 'IPv4'
+
 
     # useful params
     # Volumes
     #
     install: (imagename, version, params, callback) ->
+        console.log "INSTALLING", imagename
 
         options =
             fromImage: imagename,
@@ -44,12 +49,29 @@ module.exports = class DockerCommander
 
             container.remove (err) ->
 
+    # fire up an ambassador that allow container to speak to the host
+    ambassador: (slug, port, callback) ->
+        console.log "AMBASSADOR", slug, port
 
+        ip = @getContainerVisibleIp()
+        options =
+            name: slug
+            Image: 'aenario/ambassador'
+            Env: "#{slug.toUpperCase()}_PORT_#{port}_TCP=tcp://#{ip}:#{port}"
+            ExposedPorts: {}
+
+        options.ExposedPorts["#{port}/tcp"] = {}
+
+        @docker.createContainer options, (err) =>
+            return callback err if err
+            container = @docker.getContainer slug
+            container.start {}, callback
 
     # useful params
     # Links
     #
     start: (slug, params, callback) ->
+        console.log "STARTING", slug
         container = @docker.getContainer slug
         logfile = "/var/log/cozy_#{slug}.log"
         logStream = logrotate file: logfile, size: '100k', keep: 3
@@ -70,17 +92,16 @@ module.exports = class DockerCommander
                 container.inspect (err, data) ->
                     return callback err if err
 
-                    console.log data.NetworkSettings
                     # we wait for the container to actually start (ie. listen)
                     pingHost = data.NetworkSettings.IPAddress
                     pingPort = key.split('/')[0] for key, val of data.NetworkSettings.Ports
                     pingUrl = "http://#{pingHost}:#{pingPort}/"
 
+                    i = 0
                     do ping = ->
-                        console.log "PING", pingUrl
+                        console.log "PING", pingUrl, i++
                         request.get pingUrl, (err, response, body) ->
                             if err
-                                console.log err
                                 setTimeout ping, 500
                             else callback null, data
 
@@ -104,6 +125,12 @@ module.exports = class DockerCommander
 
     startDataSystem: (callback) ->
         @start 'datasystem', Links: ['couchdb:couch'], callback
+
+    startHome: (callback) ->
+        @start 'home',
+            PublishAllPorts: true
+            Links: ['datasystem:datasystem', 'proxy:proxy']
+        , callback
 
     startApplication: (slug, callback) ->
         @start slug,
