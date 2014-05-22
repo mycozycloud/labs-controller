@@ -1,5 +1,6 @@
 Docker = require 'dockerode'
 logrotate = require 'logrotate-stream'
+request = require 'request'
 
 module.exports = class DockerCommander
 
@@ -14,7 +15,7 @@ module.exports = class DockerCommander
     # useful params
     # Volumes
     #
-    installApplication: (imagename, version, params, callback) ->
+    install: (imagename, version, params, callback) ->
 
         options =
             fromImage: imagename,
@@ -28,29 +29,21 @@ module.exports = class DockerCommander
             options =
                 'name': slug
                 'Image': imagename
-                'Tty': false,
-                # 'Hostname': '',
-                # 'User': '',
-                # 'AttachStdin': false,
-                # 'AttachStdout': true,
-                # 'AttachStderr': true,
-                # 'OpenStdin': false,
-                # 'StdinOnce': false,
-                # 'Env': null,
-                # 'Cmd': [],
-                # 'Volumes': {},
-                # 'VolumesFrom': ''
+                'Tty': false
+
+            options[key] = value for key, value of params
 
             # create a container
             @docker.createContainer options, callback
 
 
-    uninstallApplication: (slug, callback) ->
+    uninstall: (slug, callback) ->
 
         @stop slug, (err, image) ->
             return callback err if err
 
-            container.remove callback
+            container.remove (err) ->
+
 
 
     # useful params
@@ -69,13 +62,30 @@ module.exports = class DockerCommander
             stream.setEncoding 'utf8'
             stream.pipe logStream, end: true
 
-            startOptions =
-                'Links': params.Links or []
+            startOptions = params
 
-            container.start startOptions, callback
+            container.start startOptions, (err) ->
+                return callback err if err
+
+                container.inspect (err, data) ->
+                    return callback err if err
+
+                    console.log data.NetworkSettings
+                    # we wait for the container to actually start (ie. listen)
+                    pingHost = data.NetworkSettings.IPAddress
+                    pingPort = key.split('/')[0] for key, val of data.NetworkSettings.Ports
+                    pingUrl = "http://#{pingHost}:#{pingPort}/"
+
+                    do ping = ->
+                        console.log "PING", pingUrl
+                        request.get pingUrl, (err, response, body) ->
+                            if err
+                                console.log err
+                                setTimeout ping, 500
+                            else callback null, data
 
 
-    stop: (slug) ->
+    stop: (slug, callback) ->
         container = @docker.getContainer slug
         container.inspect (err, data) ->
             return callback err if err
@@ -96,4 +106,7 @@ module.exports = class DockerCommander
         @start 'datasystem', Links: ['couchdb:couch'], callback
 
     startApplication: (slug, callback) ->
-        @start slug, Links: ['datasystem:datasystem'], callback
+        @start slug,
+            PublishAllPorts: true
+            Links: ['datasystem:datasystem']
+        , callback

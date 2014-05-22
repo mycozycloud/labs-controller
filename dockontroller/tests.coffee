@@ -4,27 +4,35 @@ DockerCommander = require './src/controller'
 commander = new DockerCommander()
 
 
-commander.installApplication 'mycozycloud/couchdb', 'latest', {}, (err) ->
-    console.log arguments
+commander.install 'mycozycloud/couchdb', 'latest', {}, (err) ->
+    # console.log arguments
     return if err
 
-    commander.installApplication 'mycozycloud/datasystem', 'latest', {}, (err) ->
-        console.log arguments
+    commander.install 'mycozycloud/datasystem', 'latest', {}, (err) ->
+        # console.log arguments
         return if err
 
         commander.startCouch (err) ->
-            console.log arguments
+            # console.log arguments
             return if err
 
             commander.startDataSystem (err) ->
-                console.log arguments
+                # console.log arguments
                 return if err
 
-                myapp = 'aenario/labs-controller-nodejsapp'
-                commander.installApplication myapp, 'latest', {}, (err) ->
-                    console.log arguments
+                # myapp = 'aenario/labs-controller-nodejsapp'
+                # commander.install myapp, 'latest', {}, (err) ->
+                #     console.log arguments
+                #     return if err
+
+                #     commander.startApplication 'labs-controller-nodejsapp', (err) ->
+                #         console.log arguments
+                #         console.log 'DONE'
+
+                commander.install 'mycozycloud/home', 'latest', {}, (err, home) ->
+                    console.log home
                     return if err
 
-                    commander.startApplication 'labs-controller-nodejsapp', (err) ->
-                        console.log arguments
+                    commander.startApplication 'home', (err) ->
+                        # console.log arguments
                         console.log 'DONE'
