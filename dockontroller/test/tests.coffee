@@ -1,5 +1,5 @@
 
-DockerCommander = require './src/controller'
+DockerCommander = require '../server/lib/controller'
 
 commander = new DockerCommander()
 
