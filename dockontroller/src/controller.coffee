@@ -1,4 +1,5 @@
 Docker = require 'dockerode'
+ProxyManager = require './proxymanager'
 logrotate = require 'logrotate-stream'
 request = require 'request'
 
@@ -10,11 +11,21 @@ module.exports = class DockerCommander
 
     constructor: ->
         @docker = new Docker {@socketPath, @version}
+        @proxy = new ProxyManager
 
     getContainerVisibleIp: ->
         addresses = require('os').networkInterfaces()['docker0']
         return ad.address for ad in addresses when ad.family is 'IPv4'
 
+    waitListening: (url, timeout, callback) ->
+        i = 0
+        do ping = ->
+            i += 500
+            console.log "PING", url, i, '/', timeout
+            return callback new Error('timeout') if i > timeout
+            request.get url, (err, response, body) ->
+                if err then setTimeout ping, 500
+                else callback null
 
     # useful params
     # Volumes
@@ -78,7 +89,7 @@ module.exports = class DockerCommander
 
         # @TODO, do the piping in child process ?
         singlepipe = stream: true, stdout: true, stderr: true
-        container.attach singlepipe, (err, stream) ->
+        container.attach singlepipe, (err, stream) =>
             return callback err if err
 
             stream.setEncoding 'utf8'
@@ -86,24 +97,24 @@ module.exports = class DockerCommander
 
             startOptions = params
 
-            container.start startOptions, (err) ->
+            container.start startOptions, (err) =>
                 return callback err if err
 
-                container.inspect (err, data) ->
+                container.inspect (err, data) =>
                     return callback err if err
 
                     # we wait for the container to actually start (ie. listen)
                     pingHost = data.NetworkSettings.IPAddress
-                    pingPort = key.split('/')[0] for key, val of data.NetworkSettings.Ports
-                    pingUrl = "http://#{pingHost}:#{pingPort}/"
+                    for key, val of data.NetworkSettings.Ports
+                        pingPort = key.split('/')[0]
+                        hostPort = val?[0].HostPort
+                        break
 
-                    i = 0
-                    do ping = ->
-                        console.log "PING", pingUrl, i++
-                        request.get pingUrl, (err, response, body) ->
-                            if err
-                                setTimeout ping, 500
-                            else callback null, data
+                    pingUrl = "http://#{pingHost}:#{pingPort}/"
+                    @waitListening pingUrl, 5000, (err) =>
+                        callback err, data, hostPort
+
+
 
 
     stop: (slug, callback) ->
@@ -124,13 +135,30 @@ module.exports = class DockerCommander
         @start 'couchdb', {}, callback
 
     startDataSystem: (callback) ->
-        @start 'datasystem', Links: ['couchdb:couch'], callback
+        @start 'datasystem', Links: ['couchdb:couch'], (err, data) =>
+            return callback err if err
+            @dataSystemHost = data.NetworkSettings.IPAddress
+            @dataSystemPort = key.split('/')[0] for key, val of data.NetworkSettings.Ports
+            console.log "DS STARTED", @dataSystemHost, @dataSystemPort
+            callback null, data
 
     startHome: (callback) ->
         @start 'home',
             PublishAllPorts: true
             Links: ['datasystem:datasystem', 'proxy:proxy']
         , callback
+
+    startProxy: (homePort, callback) ->
+        ip = @getContainerVisibleIp()
+        env =
+            HOST: '0.0.0.0'
+            DATASYSTEM_HOST: @dataSystemHost
+            DATASYSTEM_PORT: @dataSystemPort
+            DEFAULT_REDIRECT_PORT: homePort
+
+        @proxy.start env, (err) =>
+            return callback err if err
+            @waitListening 'http://localhost:9104/', 10000, callback
 
     startApplication: (slug, callback) ->
         @start slug,

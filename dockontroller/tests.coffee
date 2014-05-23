@@ -26,23 +26,22 @@ commander.install 'mycozycloud/couchdb', 'latest', {}, (err) ->
                 # console.log arguments
                 return log err if err
 
-                console.log require('os').networkInterfaces()
-
-                fakeProxy = http.createServer (request, response) ->
-                  console.log "WE GOT HIT !"
-                  response.writeHead 200, "Content-Type": "application/json"
-                  response.end "Hello World\n"
-                fakeProxy.listen 9104, commander.getContainerVisibleIp()
-                console.log "fakeProxy listening"
-
-                commander.ambassador 'proxy', 9104, (err) ->
+                commander.install 'mycozycloud/home', 'latest', {}, (err, home) ->
                     return log err if err
 
-                    commander.install 'mycozycloud/home', 'latest', {}, (err, home) ->
+                    commander.ambassador 'proxy', 9104, (err) ->
                         return log err if err
 
-                        commander.startHome (err) ->
-                            console.log 'DONE'
+                        commander.startHome (err, data, homePort) ->
+                            return log err if err
+
+                            console.log "HOME PORT", homePort
+
+                            commander.startProxy homePort, (err) ->
+                                return log err if err
+
+                                console.log "DONE"
+
 
 
                 # myapp = 'aenario/labs-controller-nodejsapp'
