@@ -46,6 +46,7 @@ module.exports = class DockerCommander
 
 
     uninstallApplication: (slug, callback) ->
+        container = @docker.getContainer slug
 
         @stop slug, (err, image) ->
             return callback err if err
@@ -75,7 +76,7 @@ module.exports = class DockerCommander
             container.start startOptions, callback
 
 
-    stop: (slug) ->
+    stop: (slug, callback) ->
         container = @docker.getContainer slug
         container.inspect (err, data) ->
             return callback err if err
@@ -97,7 +98,3 @@ module.exports = class DockerCommander
 
     startApplication: (slug, callback) ->
         @start slug, Links: ['datasystem:datasystem'], callback
-
-
-    exist: (slug) ->
-        return true

@@ -42,6 +42,8 @@ module.exports = DockerCommander = (function() {
   };
 
   DockerCommander.prototype.uninstallApplication = function(slug, callback) {
+    var container;
+    container = this.docker.getContainer(slug);
     return this.stop(slug, function(err, image) {
       if (err) {
         return callback(err);
@@ -80,7 +82,7 @@ module.exports = DockerCommander = (function() {
     });
   };
 
-  DockerCommander.prototype.stop = function(slug) {
+  DockerCommander.prototype.stop = function(slug, callback) {
     var container;
     container = this.docker.getContainer(slug);
     return container.inspect(function(err, data) {
