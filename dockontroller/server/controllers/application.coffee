@@ -4,13 +4,16 @@ utils = require '../middlewares/utils'
 commander = new DockerCommander()
 
 install = (name, app, cb) ->
-    if not commander.exist(name)
-        if name in ['home', 'proxy', 'datasystem']
-            app.password = utils.getToken()
-        commander.installApplication "mycozycloud/#{name}", name, {env:['name':name, 'token':app.password]}, (err) =>
-            cb (err)
-    else 
-        cb()
+    commander.exist name, (err, docExist) ->
+        return cb err if err
+        if not docExist
+            if name in ['home', 'proxy', 'datasystem']
+                app.password = utils.getToken()
+
+            commander.install "aenario/#{name}", 'latest', {}, (err) =>
+                cb (err)
+        else
+            cb()
 
 
 module.exports.start = (req, res, next) ->
@@ -33,30 +36,39 @@ module.exports.start = (req, res, next) ->
                     next err if err?
                     res.send 200, app
             else
-                commander.startApplication name, (err, image, port) =>
+                env = "NAME=#{name} TOKEN=#{app.password}"
+                commander.startApplication "aenario/#{name}", env, (err, image, port) =>
                     next err if err?
                     app.port = port
-                    res.send 200, app
+                    res.send 200, drone: app
 
 
 module.exports.stop = (req, res, next) ->
     app = req.body.stop
-    if commander.exist(app.name)
-        commander.stop app.name, (err, image) ->
-            next err if err?
-            res.send 200, {}
-    else
-        res.send 404, {}
+    commander.exist app.name, (err, docExist) ->
+        return cb err if err
+        if docExist
+            commander.stop app.name, (err, image) ->
+                next err if err?
+                res.send 200, {}
+        else
+            res.send 404, {}
 
 
 module.exports.clean = (req, res, next) ->
     app = req.body
-    if commander.exist(app.name)
-        commander.uninstallApplication app.name, (err) ->
-            next err if err?
-            res.send 200, {}
-    else
-        res.send 404, {}
+    commander.exist name, (err, docExist) ->
+        return cb err if err
+        if docExist
+            commander.uninstallApplication app.name, (err) ->
+                next err if err?
+                res.send 200, {}
+        else
+            res.send 404, {}
 
 
+module.exports.running = (req, res, next) ->
+    commander.running (err, result) ->
+        return nex err if err
+        res.send 200, result
 

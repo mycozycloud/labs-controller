@@ -6,13 +6,22 @@ utils = require '../middlewares/utils'
 
 module.exports =
 
-    'drones/:id/start':  
+    '/':
+        get: (req, res) -> res.send 'THIS IS THE CONTROLLER'
+
+    'drones/running':
+        get: [
+            utils.checkToken
+            application.running
+        ]
+
+    'drones/:id/start':
         post: [
             utils.checkToken
             application.start
         ]
 
-    'drones/:id/stop':  
+    'drones/:id/stop':
         post: [
             utils.checkToken
             application.stop

@@ -94,11 +94,11 @@ program
 
 # Install
 program
-    .command("install <app> ")
+    .command("install <app> <homeport> ")
     .description("Install application")
     .option('-r, --repo <repo>', 'Use specific repo')
     .option('-d, --displayName <displayName>', 'Display specific name')
-    .action (app, options) ->
+    .action (app, homeport, options) ->
         manifest.name = app
         if options.displayName?
             manifest.displayName = options.displayName
@@ -126,6 +126,7 @@ program
             else
                 manifest.git = options.repo
             path = "api/applications/install"
+            homeClient = new Client "http://localhost:#{homeport}/"
             homeClient.post path, manifest, (err, res, body) ->
                 if err or body.error
                     handleError err, body, "Install home failed"
