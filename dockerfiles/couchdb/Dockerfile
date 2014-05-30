@@ -17,5 +17,5 @@ RUN printf "[httpd]\nport = 5984\nbind_address = 0.0.0.0\n" >/usr/local/etc/couc
 
 EXPOSE 5984
 
-VOLUMES ["/usr/local/var/lib/couchdb"]
+VOLUME ["/usr/local/var/lib/couchdb"]
 CMD ["/usr/local/bin/couchdb"]
